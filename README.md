@@ -18,30 +18,26 @@ lawful. You are responsible for complying with your local laws.
 
 ## How It Works
 
-- On Pixel, the camera shutter AND the screenshot use the same sound file:
-  camera_click.ogg. Silencing that one file kills both.
-- The module overlays a short SILENT clip over the real UI sound files using
-  the root manager's systemless overlay (magic mount / overlayfs). The real
-  read-only partitions (/system, /product, /vendor, etc.) are NEVER modified,
-  so the change is fully reversible.
-- customize.sh is ADAPTIVE. At install time it scans every partition where
-  Pixel may keep UI audio:
-    - /system
-    - /system/product
-    - /product
-    - /system_ext
-    - /system/system_ext
-    - /vendor
-  for known sound filenames, including:
-    - camera_click.ogg
-    - camera_focus.ogg
-    - VideoRecord.ogg
-    - VideoStop.ogg
-    - camera_shutter.ogg
-    - ScreenCapture.ogg
-  For each file it actually finds, it overlays a silent copy at the correct
-  module-mapped path. It then prints exactly which files it silenced, so you
-  can confirm the module did something on your specific firmware.
+- On Pixel, the camera shutter AND the screenshot play the same sound file:
+  camera_click.ogg, via android.media.MediaActionSound (SHUTTER_CLICK), which
+  reads /product/media/audio/ui/ first. Silencing that one file kills both.
+- On every boot, post-fs-data.sh bind-mounts a short SILENT clip over the real
+  UI sound files. The read-only partitions (/system, /product, /vendor, etc.)
+  are NEVER modified -- the bind is a mount-namespace overlay, so the change is
+  fully reversible by removing the module and rebooting.
+- It uses an explicit `mount --bind` rather than the root manager's systemless
+  magic-mount, because magic-mount does NOT reliably reach the separate
+  /product partition on KernelSU 3.2.0 (verified on a Pixel 10a, Android 17):
+  /system overlays apply but /product ones silently do not, which left the
+  shutter/screenshot sound playing. An explicit bind works the same on Magisk,
+  KernelSU, and APatch.
+- The filename and partition lists live in module/sound_paths.sh and are shared
+  between install time and boot time. At install, customize.sh scans every
+  partition where Pixel may keep UI audio (/system, /system/product, /product,
+  /system_ext, /system/system_ext, /vendor, /odm) for known sound filenames
+  (camera_click.ogg, camera_focus.ogg, VideoRecord.ogg, VideoStop.ogg, plus OEM
+  variants) and prints exactly which files will be silenced, so you can confirm
+  the module matched something on your specific firmware before you reboot.
 
 ## Why v2 -- What Was Broken in the Original 2019 Module
 
@@ -56,13 +52,18 @@ Three things were broken:
 
 2. It only overlaid ONE path (system/product/media/audio/ui). Modern Pixel
    keeps these sounds spread across several partitions, so the single overlay
-   missed the file actually in use. v2 scans all known partitions and overlays
+   missed the file actually in use. v2 scans all known partitions and silences
    every matching file it finds.
 
 3. Its update-binary was the legacy 2019 trampoline that referenced
    /dev/magisk_img, which has been dead since Magisk v19. v2 uses the current
    install_module trampoline (Magisk 20.4+, and KernelSU / APatch via their
    Magisk compatibility shim).
+
+v2.1 additionally replaces the magic-mount overlay with an explicit
+`mount --bind` in post-fs-data.sh, after magic-mount was found not to overlay
+the /product partition on KernelSU 3.2.0 (so v2.0 installed cleanly but
+silenced nothing on a Pixel 10a).
 
 ## Compatibility
 
@@ -91,31 +92,43 @@ Three things were broken:
 
 ## Diagnostic
 
-If sounds still play after flashing and rebooting, the sound may be baked
-into an APK rather than stored as a standalone file. From a root shell,
-list every candidate sound file on the device:
+If sounds still play after flashing and rebooting, first confirm the bind
+actually took effect. From a root shell, check the live file -- the silent
+clip is ~3.6k, so the live file should be that size, not the original:
 
 ```
-find /system /product /system_ext /vendor -type f \( -iname '*camera_click*' -o -iname '*camera_shutter*' -o -iname '*screenshot*' -o -iname '*VideoRecord*' \) 2>/dev/null
+su -c 'ls -l /product/media/audio/ui/camera_click.ogg'
 ```
 
-Include this output when filing an issue.
+If it is still the original (larger) size, the bind did not apply; capture the
+mount state and module log and open an issue. If the file IS the silent clip
+but a sound still plays, the sound is coming from a file this module does not
+know about -- list every candidate on the device:
+
+```
+su -c 'find /system /product /system_ext /vendor /odm -type f \( -iname "*.ogg" -o -iname "*.mp3" -o -iname "*.wav" \) 2>/dev/null | grep -iE "shutter|screen|capture|camera|snap"'
+```
+
+Include this output when filing an issue so the filename/partition lists in
+module/sound_paths.sh can be extended.
 
 ## Limitations
 
-- Only silences apps that use the system UI sounds. Third-party camera apps
-  that bundle their own shutter sound are NOT affected.
+- Only silences sounds that are stored as loose files. Third-party camera apps
+  that bundle their own shutter sound inside the APK are NOT affected.
 - Some regional Pixel firmware (for example, Japan / Korea SIM-locked units)
-  enforce the shutter and may bake the sound directly into an APK. File
-  overlays cannot silence sounds embedded inside an APK.
+  enforce the shutter below this layer and may bake the sound into an APK;
+  bind mounts cannot silence a sound embedded inside an APK.
 
 ## Repository Layout
 
 ```
 module/                                  -- module source, zipped into the flashable artifact
   module.prop                            -- metadata: id=silence-shutter-screenshot,
-                                            name="Silence Shutter and Screenshot", version v2.0
-  customize.sh                           -- adaptive installer (scans partitions, overlays found files)
+                                            name="Silence Shutter and Screenshot", version v2.1
+  customize.sh                           -- install-time validator/preview (scans partitions, lists matches)
+  post-fs-data.sh                        -- boot-time worker: bind-mounts the silent clip over found files
+  sound_paths.sh                         -- shared SSCAM_SOUNDS / SSCAM_DIRS lists (sourced by both)
   silent.ogg                             -- real ~0.25s silent Ogg/Vorbis clip (NOT a 0-byte file)
   META-INF/com/google/android/
     update-binary                        -- modern installer trampoline (install_module)
