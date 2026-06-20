@@ -40,7 +40,7 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 - [ ] Research silencing WITHOUT the per-app toggle on hiding setups: susfs legit_mounts.txt / `ksu_susfs add_sus_mount` to keep our bind from being umounted, or another mechanism that survives umount. Uncertain; susfs-specific. (See "Why the sound may still play" in README.)
 - [ ] Revisit susfs open_redirect on kernels that actually honor CONFIG_KSU_SUSFS_OPEN_REDIRECT (no-op on this Pixel 10a kernel; the module already applies it best-effort with uid schemes 2/0/4).
 - [ ] Test on plain Magisk and on non-hiding KernelSU to confirm the bind silences with zero manual steps there.
-- [x] Add updateJson URL to module.prop for in-app updates (v2.3): updateJson -> releases/latest/download/update.json; release.yml generates+uploads update.json (scripts/gen-update-json.sh) per tag; CHANGELOG.md added; validate.sh requires updateJson + JSON-checks the generator. NOT yet released -- tag v2.3 to publish (auto-update works from v2.3 onward).
+- [x] Add updateJson URL to module.prop for in-app updates (v2.3): updateJson -> releases/latest/download/update.json; release.yml generates+uploads update.json (scripts/gen-update-json.sh) per tag; CHANGELOG.md added; validate.sh requires updateJson + JSON-checks the generator. RELEASED v2.3 (tag pushed, workflow green): release has both the zip and update.json; the latest/download/update.json URL resolves and its zipUrl returns HTTP 200. Auto-update works from v2.3 onward (v2.3 installed manually once, then future releases update in-app).
 - [ ] Consider generating silent.ogg in CI (see tasks.md).
 
 ## Status Summary
