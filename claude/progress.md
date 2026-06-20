@@ -27,11 +27,12 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 
 ### Phase 4: Device verification and release -- IN PROGRESS
 - [x] Flash v2.0 on Pixel 10a (Android 17, KernelSU 3.2.0) and reboot
-- [x] Diagnose why v2.0 silenced nothing: KernelSU magic-mount does not reach the /product partition (the camera_click.ogg overlay never applied; live file stayed 6401 bytes)
-- [x] Rewrite as v2.1: post-fs-data.sh bind-mounts silent.ogg over each sound file every boot (sound_paths.sh shared list); fixed wrong "baked into APK" comments
-- [x] Verify the bind approach on-device live (manual mount --bind + SystemUI restart -> screenshot confirmed silent by the user)
-- [ ] Flash the BUILT v2.1 zip, reboot, confirm post-fs-data binds (live camera_click.ogg == 3584 bytes) and the sound is silent
-- [ ] Tag v2.1 and push to trigger the release workflow, verify the GitHub Release artifact
+- [x] Diagnose v2.0/v2.1: magic-mount does not reach /product; bind does, BUT the deeper cause is module-hiding (KernelSU "Umount modules" + susfs auto_try_umount=1 + rezygisk) which unmounts ALL module overlays from non-root apps incl. System UI (proven: bindhosts also invisible to System UI). inotify trace confirmed the screenshot opens+reads /product/media/audio/ui/camera_click.ogg live each capture.
+- [x] Ruled out susfs open_redirect: CONFIG flag present but NO-OP on this kernel (proven in isolation)
+- [x] Ship v2.2: post-fs-data.sh does mount --bind + best-effort open_redirect; README documents the umount caveat and fixes
+- [x] VERIFIED FIX (user ear test + /proc/<systemui>/root check == 3584): disable KernelSU "Umount modules" for com.android.systemui (per-app), reboot -> bind reaches System UI -> screenshot/shutter SILENT, hiding kept for other apps
+- [ ] Commit + push v2.2; decide on v2.2 release tag and how to handle the prematurely-tagged v2.1 release
+- [ ] Optional: investigate making the per-app umount-off automatic (likely not feasible from a module; it is a manager setting)
 
 ## Status Summary
 | Phase | Status | Progress |
@@ -39,7 +40,7 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 | Phase 1: Module rewrite (v2) | Done | 5/5 |
 | Phase 2: Tooling and CI | Done | 4/4 |
 | Phase 3: Docs and repo hygiene | Done | 4/4 |
-| Phase 4: Device verification and release | In progress | 4/6 |
+| Phase 4: Device verification and release | In progress | 5/7 |
 
 ## Decisions & Notes
 <!-- Append entries as: YYYY-MM-DD: [decision or important note] -->
