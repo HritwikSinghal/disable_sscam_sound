@@ -1,6 +1,6 @@
 id=silence-shutter-screenshot
 name=Silence Shutter and Screenshot
-version=2.1
-versionCode=3
+version=2.2
+versionCode=4
 author=hritwik
-description=Silences the camera shutter and screenshot sound by bind-mounting a short silent clip over the UI sound files (camera_click.ogg etc.) on every boot. Uses an explicit mount --bind in post-fs-data.sh instead of magic-mount, because magic-mount does not reach the separate /product partition on KernelSU 3.2.0. Systemless and fully reversible. Verified on Pixel 10a (Android 17). Third-party camera apps that bundle their own shutter sound are unaffected.
+description=Silences the camera shutter and screenshot sound by overlaying a short silent clip over the UI sound files (camera_click.ogg etc.) on every boot, via mount --bind plus a best-effort susfs open_redirect in post-fs-data.sh. Systemless and reversible. NOTE: on KernelSU setups that hide modules from apps (Umount modules / susfs auto_try_umount) the overlay is unmounted from System UI and the sound keeps playing -- disable "Umount modules" for System UI (see README). Third-party camera apps with their own bundled shutter sound are unaffected.
