@@ -1,6 +1,6 @@
 id=silence-shutter-screenshot
 name=Silence Shutter and Screenshot
-version=2.0
-versionCode=2
+version=2.1
+versionCode=3
 author=hritwik
-description=Silences the camera shutter (and screenshot where it is still a loose file) by overlaying a short silent clip over the UI sound files across all partitions (system, product, system_ext, vendor, odm). Fixes the empty-file approach that broke on modern Pixel builds. Note: on Android 13+ the screenshot sound may be baked into SystemUI and unsilenceable by overlay; locked JP/KR regions enforce the shutter below this layer.
+description=Silences the camera shutter and screenshot sound by bind-mounting a short silent clip over the UI sound files (camera_click.ogg etc.) on every boot. Uses an explicit mount --bind in post-fs-data.sh instead of magic-mount, because magic-mount does not reach the separate /product partition on KernelSU 3.2.0. Systemless and fully reversible. Verified on Pixel 10a (Android 17). Third-party camera apps that bundle their own shutter sound are unaffected.
