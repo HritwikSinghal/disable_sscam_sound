@@ -8,7 +8,7 @@ fail=0
 err() { echo "FAIL: $*" >&2; fail=1; }
 
 # Required files for a flashable module.
-for f in module.prop META-INF/com/google/android/update-binary META-INF/com/google/android/updater-script customize.sh silent.ogg; do
+for f in module.prop META-INF/com/google/android/update-binary META-INF/com/google/android/updater-script customize.sh post-fs-data.sh sound_paths.sh silent.ogg; do
   [ -f "$M/$f" ] || err "missing $f"
 done
 
@@ -29,8 +29,14 @@ if command -v file >/dev/null; then
 fi
 
 # No CRLF line endings in shell/prop files (breaks the installer).
-for f in module.prop customize.sh META-INF/com/google/android/update-binary; do
+for f in module.prop customize.sh post-fs-data.sh sound_paths.sh META-INF/com/google/android/update-binary; do
   if grep -lq $'\r' "$M/$f" 2>/dev/null; then err "$f has CRLF line endings (must be LF)"; fi
 done
+
+# post-fs-data.sh must keep silent.ogg around to bind at boot -- a customize.sh
+# that deletes the clip would leave the boot script with nothing to mount.
+if grep -Eq '(^|[[:space:]])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*"?\$?\{?MODPATH\}?/silent\.ogg' "$M/customize.sh" 2>/dev/null; then
+  err "customize.sh deletes silent.ogg, but post-fs-data.sh needs it as the bind source"
+fi
 
 if [ "$fail" -eq 0 ]; then echo "validate: OK"; else exit 1; fi
