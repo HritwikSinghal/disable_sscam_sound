@@ -21,16 +21,20 @@ lawful. You are responsible for complying with your local laws.
 - On Pixel, the camera shutter AND the screenshot play the same sound file:
   camera_click.ogg, via android.media.MediaActionSound (SHUTTER_CLICK), which
   reads /product/media/audio/ui/ first. Silencing that one file kills both.
-- On every boot, post-fs-data.sh bind-mounts a short SILENT clip over the real
-  UI sound files. The read-only partitions (/system, /product, /vendor, etc.)
-  are NEVER modified -- the bind is a mount-namespace overlay, so the change is
-  fully reversible by removing the module and rebooting.
+- On every boot, post-fs-data.sh silences each found sound file two ways:
+  (1) `mount --bind` of a short SILENT clip over the real file, and (2) a
+  best-effort susfs `add_open_redirect` of the same path. The read-only
+  partitions (/system, /product, /vendor, etc.) are NEVER modified -- both are
+  overlays, fully reversible by removing the module and rebooting.
 - It uses an explicit `mount --bind` rather than the root manager's systemless
   magic-mount, because magic-mount does NOT reliably reach the separate
   /product partition on KernelSU 3.2.0 (verified on a Pixel 10a, Android 17):
-  /system overlays apply but /product ones silently do not, which left the
-  shutter/screenshot sound playing. An explicit bind works the same on Magisk,
-  KernelSU, and APatch.
+  /system overlays apply but /product ones silently do not. An explicit bind
+  works the same on Magisk, KernelSU, and APatch.
+- IMPORTANT: on a KernelSU setup that HIDES modules from apps (KernelSU "Umount
+  modules" and/or susfs auto_try_umount), neither overlay reaches System UI and
+  the sound keeps playing. See "Why the sound may still play" below -- this is
+  the most common reason it does not work, and the fix is a one-time setting.
 - The filename and partition lists live in module/sound_paths.sh and are shared
   between install time and boot time. At install, customize.sh scans every
   partition where Pixel may keep UI audio (/system, /system/product, /product,
@@ -38,6 +42,59 @@ lawful. You are responsible for complying with your local laws.
   (camera_click.ogg, camera_focus.ogg, VideoRecord.ogg, VideoStop.ogg, plus OEM
   variants) and prints exactly which files will be silenced, so you can confirm
   the module matched something on your specific firmware before you reboot.
+
+## Why the sound may still play on KernelSU (module hiding)
+
+On a KernelSU setup that HIDES modules from apps -- KernelSU's "Umount modules"
+feature and/or susfs `auto_try_umount=1` (commonly paired with Zygisk / ReZygisk
+for Play Integrity) -- this module installs correctly but the screenshot and
+shutter sound KEEP playing. This is not a bug in the overlay; it is the hiding
+stack doing exactly what it is meant to.
+
+Why it happens (all verified on a Pixel 10a, Android 17, KernelSU 3.2.0 + susfs):
+
+- The screenshot opens and reads /product/media/audio/ui/camera_click.ogg LIVE
+  on every capture (confirmed by an inotify trace). It is the right file.
+- The module-hiding feature UNMOUNTS every module overlay from the mount
+  namespace of non-root apps so they cannot detect root. System UI -- which
+  plays the screenshot sound -- is such an app, so it is handed the ORIGINAL,
+  un-silenced file. A root shell sees the 3.6k silent clip; System UI sees the
+  original. (Proven device-wide: the unrelated `bindhosts` module's
+  /system/etc/hosts overlay is ALSO invisible to System UI.)
+- No mount-based overlay (magic-mount or bind) can win against this, because the
+  hiding layer removes the mount from the app afterward.
+- susfs `add_open_redirect` COULD bypass the umount by redirecting the file open
+  in the kernel, and the module applies it best-effort. But on some kernels
+  (including the Pixel 10a build tested) `CONFIG_KSU_SUSFS_OPEN_REDIRECT` is
+  advertised in `enabled_features` yet is a NO-OP at runtime, so it does not
+  help there.
+
+### Fix (recommended): unhide modules from System UI only
+
+Keep root-hiding for your other apps; just let System UI see the overlay:
+
+1. Open the KernelSU / KernelSU-Next manager app.
+2. Go to the app list; enable "show system apps" if needed.
+3. Find "System UI" (package com.android.systemui).
+4. Open its profile and turn OFF "Umount modules" for it.
+5. Reboot.
+
+After reboot the silent overlay reaches System UI and the sound is gone, while
+banking / Play-Integrity apps stay hidden. (If your build plays the sound from
+another uid-1000 component, also turn off "Umount modules" for "Android System"
+/ the system package.)
+
+### Fix (simplest, but weakens hiding): disable module-umount globally
+
+Turn off "Umount modules" in the KernelSU manager and set `auto_try_umount=0` in
+/data/adb/susfs4ksu/config.sh, then reboot. The overlay then reaches every app
+-- but every app can also see your modules again, which weakens Play Integrity /
+root hiding. Only do this if hiding does not matter to you on this device.
+
+### Plain Magisk / non-hiding KernelSU
+
+If you do NOT run module hiding, none of the above is needed -- the bind overlay
+reaches all apps and the sound is silenced after a reboot.
 
 ## Why v2 -- What Was Broken in the Original 2019 Module
 
@@ -60,10 +117,15 @@ Three things were broken:
    install_module trampoline (Magisk 20.4+, and KernelSU / APatch via their
    Magisk compatibility shim).
 
-v2.1 additionally replaces the magic-mount overlay with an explicit
-`mount --bind` in post-fs-data.sh, after magic-mount was found not to overlay
-the /product partition on KernelSU 3.2.0 (so v2.0 installed cleanly but
-silenced nothing on a Pixel 10a).
+v2.1 replaced the magic-mount overlay with an explicit `mount --bind` in
+post-fs-data.sh, after magic-mount was found not to overlay the /product
+partition on KernelSU 3.2.0 (so v2.0 installed cleanly but silenced nothing on a
+Pixel 10a).
+
+v2.2 adds a best-effort susfs `add_open_redirect` layer and documents that, on
+KernelSU setups with module hiding (Umount modules / susfs auto_try_umount), the
+overlay is unmounted from System UI and a one-time per-app setting is needed --
+see "Why the sound may still play" above.
 
 ## Compatibility
 
@@ -125,7 +187,7 @@ module/sound_paths.sh can be extended.
 ```
 module/                                  -- module source, zipped into the flashable artifact
   module.prop                            -- metadata: id=silence-shutter-screenshot,
-                                            name="Silence Shutter and Screenshot", version v2.1
+                                            name="Silence Shutter and Screenshot", version v2.2
   customize.sh                           -- install-time validator/preview (scans partitions, lists matches)
   post-fs-data.sh                        -- boot-time worker: bind-mounts the silent clip over found files
   sound_paths.sh                         -- shared SSCAM_SOUNDS / SSCAM_DIRS lists (sourced by both)
