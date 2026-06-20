@@ -31,8 +31,10 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 - [x] Ruled out susfs open_redirect: CONFIG flag present but NO-OP on this kernel (proven in isolation)
 - [x] Ship v2.2: post-fs-data.sh does mount --bind + best-effort open_redirect; README documents the umount caveat and fixes
 - [x] VERIFIED FIX (user ear test + /proc/<systemui>/root check == 3584): disable KernelSU "Umount modules" for com.android.systemui (per-app), reboot -> bind reaches System UI -> screenshot/shutter SILENT, hiding kept for other apps
-- [ ] Commit + push v2.2; decide on v2.2 release tag and how to handle the prematurely-tagged v2.1 release
-- [ ] Optional: investigate making the per-app umount-off automatic (likely not feasible from a module; it is a manager setting)
+- [x] Commit + push v2.2 (bind + best-effort open_redirect + install-time hiding warning in customize.sh, verified firing on-device)
+- [x] Investigated auto-setting per-app umount: NOT feasible safely -- ksud has no per-app umount CLI (profile = root sepolicy/templates only); only the GLOBAL `ksud feature set kernel_umount 0` exists (weakens hiding for all apps). Per-app lives in /data/adb/ksu/.allowlist (manager GUI only); editing it from a module is unsupported/fragile. Decision: keep systemless + print one-time per-app instructions at install.
+- [x] Deleted the prematurely-tagged v2.1 GitHub Release + tag (local+remote); v2.0 left as-is
+- [ ] HOLD: v2.2 release on master only, not tagged/published (user choice) -- tag v2.2 when ready to publish
 
 ## Status Summary
 | Phase | Status | Progress |
@@ -40,7 +42,7 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 | Phase 1: Module rewrite (v2) | Done | 5/5 |
 | Phase 2: Tooling and CI | Done | 4/4 |
 | Phase 3: Docs and repo hygiene | Done | 4/4 |
-| Phase 4: Device verification and release | In progress | 5/7 |
+| Phase 4: Device verification and release | In progress | 8/9 |
 
 ## Decisions & Notes
 <!-- Append entries as: YYYY-MM-DD: [decision or important note] -->
