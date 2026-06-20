@@ -8,11 +8,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODULE_DIR="$ROOT/module"
 OUT_DIR="${1:-$ROOT/dist}"
 
+# Canonicalize OUT_DIR to an absolute path: the zip step cd's into module/ and a
+# relative OUT_DIR (e.g. "dist", as CI passes) would then resolve under module/.
+mkdir -p "$OUT_DIR"
+OUT_DIR="$(cd "$OUT_DIR" && pwd)"
+
 # Pull version from module.prop so the artifact name always matches metadata.
 VERSION="$(grep -E '^version=' "$MODULE_DIR/module.prop" | cut -d= -f2)"
 [ -n "$VERSION" ] || { echo "ERROR: no version= in module.prop" >&2; exit 1; }
 
-mkdir -p "$OUT_DIR"
 ZIP="$OUT_DIR/disable_sscam_sound-${VERSION}.zip"
 rm -f "$ZIP"
 
