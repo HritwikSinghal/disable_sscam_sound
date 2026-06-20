@@ -1,0 +1,32 @@
+name: release
+
+# Publish the flashable module zip to a GitHub Release when a v* tag is pushed.
+#   git tag v2.0 && git push origin v2.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write  # required to create the Release and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y zip file
+
+      - name: Validate module source
+        run: bash scripts/validate.sh
+
+      - name: Build module zip
+        run: bash scripts/build.sh dist
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true

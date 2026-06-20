@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Sanity checks on the module source before packaging.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+M="$ROOT/module"
+fail=0
+err() { echo "FAIL: $*" >&2; fail=1; }
+
+# Required files for a flashable module.
+for f in module.prop META-INF/com/google/android/update-binary META-INF/com/google/android/updater-script customize.sh silent.ogg; do
+  [ -f "$M/$f" ] || err "missing $f"
+done
+
+# module.prop must have the required keys.
+for k in id name version versionCode author description; do
+  grep -qE "^$k=" "$M/module.prop" || err "module.prop missing key: $k"
+done
+
+# updater-script must be exactly the Magisk marker.
+[ "$(tr -d '[:space:]' < "$M/META-INF/com/google/android/updater-script")" = "#MAGISK" ] \
+  || err "updater-script must contain only '#MAGISK'"
+
+# silent.ogg must be a real Ogg/Vorbis file, not a 0-byte placeholder
+# (the 0-byte approach is exactly what broke the original module).
+[ -s "$M/silent.ogg" ] || err "silent.ogg is empty (0-byte files crash SystemUI on modern Android)"
+if command -v file >/dev/null; then
+  file "$M/silent.ogg" | grep -qi 'ogg' || err "silent.ogg is not an Ogg file"
+fi
+
+# No CRLF line endings in shell/prop files (breaks the installer).
+for f in module.prop customize.sh META-INF/com/google/android/update-binary; do
+  if grep -lq $'\r' "$M/$f" 2>/dev/null; then err "$f has CRLF line endings (must be LF)"; fi
+done
+
+if [ "$fail" -eq 0 ]; then echo "validate: OK"; else exit 1; fi

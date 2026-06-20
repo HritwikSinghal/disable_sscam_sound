@@ -1,1 +1,10 @@
+# Nix build symlink
 result
+
+# Module build output
+/dist/
+
+# Editor / OS noise
+*.swp
+*.swo
+.DS_Store

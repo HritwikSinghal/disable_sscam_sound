@@ -1,0 +1,31 @@
+name: build
+
+# Validate and build the flashable module on every push and PR so a broken
+# module structure never reaches a release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y zip file
+
+      - name: Validate module source
+        run: bash scripts/validate.sh
+
+      - name: Build module zip
+        run: bash scripts/build.sh dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: disable_sscam_sound-module
+          path: dist/*.zip
+          if-no-files-found: error
