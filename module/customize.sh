@@ -5,12 +5,38 @@
 SKIPUNZIP=0
 SILENT="$MODPATH/silent.ogg"
 
-# UI sound filenames used for camera shutter, autofocus, video, and screenshot.
-# camera_click.ogg is shared by the camera shutter AND the screenshot on Pixel.
-SOUNDS="camera_click.ogg camera_focus.ogg VideoRecord.ogg VideoStop.ogg camera_shutter.ogg ScreenCapture.ogg Screenshot.ogg audio_end.ogg"
+# Guard the original 0-byte failure mode: a missing or empty source clip would
+# write broken overlays that crash SystemUI / break screenshots on Android 13+.
+# Aborting cleanly is far better than installing a silently broken module.
+[ -s "$SILENT" ] || abort "! silent.ogg missing or empty -- aborting to avoid the 0-byte crash bug"
 
-# Real partitions/dirs Pixel keeps UI audio in.
-DIRS="/system/media/audio/ui /system/product/media/audio/ui /product/media/audio/ui /system/system_ext/media/audio/ui /system_ext/media/audio/ui /system/vendor/media/audio/ui /vendor/media/audio/ui"
+# UI sound filenames to silence.
+# Core AOSP/Pixel set (camera_click.ogg is the framework shutter sound, hardcoded
+# in config_cameraShutterSound -> /product/media/audio/ui/camera_click.ogg):
+#   camera_click.ogg camera_focus.ogg VideoRecord.ogg VideoStop.ogg
+# NOTE: on Android 13+ the screenshot sound is NO LONGER camera_click.ogg -- it is
+# a separate asset, often baked into SystemUI.apk (res/raw). A loose-file overlay
+# cannot silence an in-APK screenshot sound; ScreenCapture.ogg/Screenshot.ogg
+# below are best-effort for builds that still keep it as a loose file.
+# The remaining names are OEM variants (Samsung/OnePlus); all are guarded by
+# [ -f ] so they are safe no-ops on devices that lack them.
+SOUNDS="camera_click.ogg camera_focus.ogg VideoRecord.ogg VideoStop.ogg \
+camera_click_short.ogg Shutter.ogg Shutter01.ogg camera_shutter.ogg \
+ScreenCapture.ogg Screenshot.ogg"
+
+# Real partitions/dirs modern Android keeps UI audio in. Both the canonical
+# .../media/audio/ui dir and the flatter .../media/audio dir are scanned, plus
+# /odm for OEMs that ship UI audio there. All are guarded by [ -d ].
+DIRS="\
+/system/media/audio/ui /system/media/audio \
+/system/product/media/audio/ui /system/product/media/audio \
+/product/media/audio/ui /product/media/audio \
+/system/system_ext/media/audio/ui /system/system_ext/media/audio \
+/system_ext/media/audio/ui /system_ext/media/audio \
+/system/vendor/media/audio/ui /system/vendor/media/audio \
+/vendor/media/audio/ui /vendor/media/audio \
+/odm/media/audio/ui /odm/media/audio \
+/system/odm/media/audio/ui /system/odm/media/audio"
 
 ui_print "- Scanning for shutter/screenshot sound files"
 found=0
@@ -22,12 +48,13 @@ for d in $DIRS; do
     /product/*)    mp="system/product/${d#/product/}" ;;
     /system_ext/*) mp="system/system_ext/${d#/system_ext/}" ;;
     /vendor/*)     mp="system/vendor/${d#/vendor/}" ;;
+    /odm/*)        mp="system/odm/${d#/odm/}" ;;
     *) continue ;;
   esac
   for s in $SOUNDS; do
     if [ -f "$d/$s" ]; then
       mkdir -p "$MODPATH/$mp"
-      cp -f "$SILENT" "$MODPATH/$mp/$s"
+      cp -f "$SILENT" "$MODPATH/$mp/$s" || abort "! failed to write overlay $mp/$s"
       ui_print "  overlay: $d/$s"
       found=$((found + 1))
     fi
@@ -42,6 +69,6 @@ if [ "$found" -eq 0 ]; then
   ui_print "! Run the diagnostic 'find' command and report back so we can target it."
 else
   ui_print "- Silenced $found sound file(s). Reboot to apply."
+  # Only meaningful when overlays were actually written.
+  set_perm_recursive "$MODPATH/system" 0 0 0755 0644
 fi
-
-set_perm_recursive "$MODPATH/system" 0 0 0755 0644
