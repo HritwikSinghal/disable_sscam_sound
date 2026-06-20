@@ -40,4 +40,33 @@ set_perm "$MODPATH/silent.ogg"      0 0 0644
 set_perm "$MODPATH/sound_paths.sh"  0 0 0644
 set_perm "$MODPATH/post-fs-data.sh" 0 0 0755
 
+# KernelSU module-hiding caveat. If the root manager UNMOUNTS modules from apps
+# (KernelSU "Umount modules" / susfs auto_try_umount), the overlay never reaches
+# System UI and the sound keeps playing. There is no supported command to
+# exclude a single app, so warn loudly with the one-time manual step. We only
+# warn on KernelSU ($KSU is set by the KernelSU installer) when hiding looks on.
+if [ "$KSU" = "true" ]; then
+  hiding=0
+  grep -q '^auto_try_umount=1' /data/adb/susfs4ksu/config.sh 2>/dev/null && hiding=1
+  for kb in ksud /data/adb/ksud; do
+    command -v "$kb" >/dev/null 2>&1 || [ -x "$kb" ] || continue
+    "$kb" feature get kernel_umount 2>/dev/null | grep -qi 'enabled\|: 1' && hiding=1
+    break
+  done
+  if [ "$hiding" = "1" ]; then
+    ui_print " "
+    ui_print "!! KernelSU module-hiding (Umount modules / susfs) is ACTIVE."
+    ui_print "!! The overlay will NOT reach System UI, so the screenshot/shutter"
+    ui_print "!! sound will KEEP playing until you do this ONE-TIME step:"
+    ui_print "!!   1. Open the KernelSU(-Next) app -> app list"
+    ui_print "!!   2. Enable 'show system apps'"
+    ui_print "!!   3. Open 'System UI' (com.android.systemui)"
+    ui_print "!!   4. Turn OFF 'Umount modules' for it"
+    ui_print "!!   5. Reboot"
+    ui_print "!! This is persistent and keeps root-hiding for your other apps."
+    ui_print "!! Details: see the README 'Why the sound may still play' section."
+    ui_print " "
+  fi
+fi
+
 ui_print "- Reboot to apply."
