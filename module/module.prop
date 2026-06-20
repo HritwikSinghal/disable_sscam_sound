@@ -1,6 +1,7 @@
 id=silence-shutter-screenshot
 name=Silence Shutter and Screenshot
-version=2.2
-versionCode=4
+version=2.3
+versionCode=5
 author=hritwik
 description=Silences the camera shutter and screenshot sound by overlaying a short silent clip over the UI sound files (camera_click.ogg etc.) on every boot, via mount --bind plus a best-effort susfs open_redirect in post-fs-data.sh. Systemless and reversible. NOTE: on KernelSU setups that hide modules from apps (Umount modules / susfs auto_try_umount) the overlay is unmounted from System UI and the sound keeps playing -- disable "Umount modules" for System UI (see README). Third-party camera apps with their own bundled shutter sound are unaffected.
+updateJson=https://github.com/HritwikSinghal/disable_sscam_sound/releases/latest/download/update.json

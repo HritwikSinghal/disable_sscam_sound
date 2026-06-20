@@ -24,9 +24,17 @@ jobs:
       - name: Build module zip
         run: bash scripts/build.sh dist
 
+      # Generate the in-app auto-update metadata for this exact tag. module.prop
+      # points updateJson at releases/latest/download/update.json, so uploading
+      # it as a release asset makes the manager always read the newest release.
+      - name: Generate update.json
+        run: bash scripts/gen-update-json.sh "${GITHUB_REF_NAME}" dist/update.json
+
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist/update.json
           generate_release_notes: true
           fail_on_unmatched_files: true

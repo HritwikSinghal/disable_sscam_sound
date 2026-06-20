@@ -13,9 +13,12 @@ for f in module.prop META-INF/com/google/android/update-binary META-INF/com/goog
 done
 
 # module.prop must have the required keys.
-for k in id name version versionCode author description; do
+for k in id name version versionCode author description updateJson; do
   grep -qE "^$k=" "$M/module.prop" || err "module.prop missing key: $k"
 done
+
+# updateJson must be an https URL (the manager fetches it for in-app updates).
+grep -qE '^updateJson=https://' "$M/module.prop" || err "updateJson must be an https:// URL"
 
 # updater-script must be exactly the Magisk marker.
 [ "$(tr -d '[:space:]' < "$M/META-INF/com/google/android/updater-script")" = "#MAGISK" ] \
@@ -37,6 +40,20 @@ done
 # that deletes the clip would leave the boot script with nothing to mount.
 if grep -Eq '(^|[[:space:]])rm[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*"?\$?\{?MODPATH\}?/silent\.ogg' "$M/customize.sh" 2>/dev/null; then
   err "customize.sh deletes silent.ogg, but post-fs-data.sh needs it as the bind source"
+fi
+
+# The update.json generator must produce valid JSON (it feeds the in-app updater).
+if [ -f "$ROOT/scripts/gen-update-json.sh" ]; then
+  tmp="$(mktemp)"
+  if bash "$ROOT/scripts/gen-update-json.sh" >/dev/null 2>&1 "" "$tmp"; then
+    if command -v python3 >/dev/null; then
+      python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$tmp" 2>/dev/null \
+        || err "gen-update-json.sh produced invalid JSON"
+    fi
+  else
+    err "gen-update-json.sh failed to run"
+  fi
+  rm -f "$tmp"
 fi
 
 if [ "$fail" -eq 0 ]; then echo "validate: OK"; else exit 1; fi
