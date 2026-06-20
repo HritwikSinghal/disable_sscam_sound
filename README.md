@@ -152,6 +152,27 @@ see "Why the sound may still play" above.
 4. If nothing is silenced, the installer prints a warning. Run the diagnostic
    below and open an issue with the output.
 
+## Updates (in-app auto-update)
+
+From v2.3 on, the module supports the root manager's built-in updater. module.prop
+carries an `updateJson` field pointing at:
+
+```
+https://github.com/HritwikSinghal/disable_sscam_sound/releases/latest/download/update.json
+```
+
+On every `v*` tag, CI builds the zip, generates `update.json` (version,
+versionCode, the tagged zip URL, and a changelog URL), and uploads BOTH as
+release assets. Because the URL targets `releases/latest/download/update.json`,
+the manager always reads the newest release's metadata -- no commit-back to the
+repo. KernelSU(-Next) / Magisk / APatch will then show an update and flash it
+in-app when a newer `versionCode` is published.
+
+Note: auto-update only works once you are running a build that already contains
+the `updateJson` field (v2.3+). Install v2.3 manually once; subsequent releases
+update from within the manager. The `changelog` shown by the updater is
+[CHANGELOG.md](CHANGELOG.md).
+
 ## Diagnostic
 
 If sounds still play after flashing and rebooting, first confirm the bind
@@ -187,24 +208,30 @@ module/sound_paths.sh can be extended.
 ```
 module/                                  -- module source, zipped into the flashable artifact
   module.prop                            -- metadata: id=silence-shutter-screenshot,
-                                            name="Silence Shutter and Screenshot", version v2.2
-  customize.sh                           -- install-time validator/preview (scans partitions, lists matches)
-  post-fs-data.sh                        -- boot-time worker: bind-mounts the silent clip over found files
+                                            name="Silence Shutter and Screenshot", version v2.3,
+                                            updateJson (in-app auto-update URL)
+  customize.sh                           -- install-time validator/preview (scans partitions, lists
+                                            matches; warns if KernelSU module-hiding is active)
+  post-fs-data.sh                        -- boot-time worker: bind-mounts the silent clip over found
+                                            files (+ best-effort susfs open_redirect)
   sound_paths.sh                         -- shared SSCAM_SOUNDS / SSCAM_DIRS lists (sourced by both)
   silent.ogg                             -- real ~0.25s silent Ogg/Vorbis clip (NOT a 0-byte file)
   META-INF/com/google/android/
     update-binary                        -- modern installer trampoline (install_module)
     updater-script                       -- modern installer trampoline
+CHANGELOG.md                             -- changelog shown by the in-app updater (update.json points here)
 scripts/
   build.sh                               -- builds dist/disable_sscam_sound-<version>.zip from module/
                                             (version read from module.prop)
   validate.sh                            -- sanity-checks module source: required files, module.prop
-                                            keys, non-empty ogg, LF line endings
+                                            keys (incl. updateJson), non-empty ogg, LF, update.json JSON
+  gen-update-json.sh                     -- generates update.json (version, versionCode, zipUrl,
+                                            changelog) from module.prop + the release tag
 .github/workflows/
   build.yml                              -- validates + builds the zip on every push/PR,
                                             uploads it as a CI artifact
-  release.yml                            -- on a v* git tag, builds and publishes the zip
-                                            to a GitHub Release
+  release.yml                            -- on a v* git tag, builds the zip, generates update.json,
+                                            and publishes both to a GitHub Release
 reference/
   original-broken-module.zip             -- the old 2019 module that does NOT work on modern
                                             Pixel, kept as a reference

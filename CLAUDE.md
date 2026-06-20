@@ -8,7 +8,7 @@ files -- the read-only partitions are never modified, so it is fully reversible.
 ## Repo layout
 
 - `module/` -- module source, zipped into the flashable artifact
-  - `module.prop` -- metadata (id, name, version)
+  - `module.prop` -- metadata (id, name, version, `updateJson` for in-app auto-update)
   - `customize.sh` -- install-time validator + preview (scans partitions, lists matches)
   - `post-fs-data.sh` -- boot-time worker: bind-mounts the silent clip over found files
   - `sound_paths.sh` -- shared `SSCAM_SOUNDS` / `SSCAM_DIRS` lists (sourced by both)
@@ -16,8 +16,10 @@ files -- the read-only partitions are never modified, so it is fully reversible.
   - `META-INF/com/google/android/{update-binary,updater-script}` -- installer trampoline
 - `scripts/build.sh` -- builds `dist/disable_sscam_sound-<version>.zip` (version from module.prop)
 - `scripts/validate.sh` -- sanity-checks the module source
+- `scripts/gen-update-json.sh` -- generates `update.json` (version, versionCode, zipUrl, changelog) for in-app auto-update
+- `CHANGELOG.md` -- changelog shown by the in-app updater (`update.json` `changelog` URL points here)
 - `.github/workflows/build.yml` -- validate + build + upload artifact on push/PR
-- `.github/workflows/release.yml` -- publish the zip to a GitHub Release on a `v*` tag
+- `.github/workflows/release.yml` -- on a `v*` tag: build the zip, generate `update.json`, publish both to a GitHub Release
 - `reference/original-broken-module.zip` -- the old broken module, kept for reference
 
 ## Key facts
@@ -47,6 +49,12 @@ files -- the read-only partitions are never modified, so it is fully reversible.
 - `update-binary` must be the modern `install_module` trampoline (Magisk 20.4+,
   KernelSU/APatch compatible), NOT the legacy `/dev/magisk_img` one from 2019.
 - Module artifact paths must sit at the ZIP ROOT (zip from inside `module/`).
+- In-app auto-update: `module.prop` `updateJson` points at
+  `releases/latest/download/update.json`. `release.yml` generates `update.json`
+  (via `gen-update-json.sh`) and uploads it as a release asset on every `v*`
+  tag, so the manager always reads the newest release -- no commit-back to the
+  repo. Auto-update only takes effect from a build that ALREADY ships
+  `updateJson` (v2.3+); the first such build is installed manually.
 
 ## Conventions
 
