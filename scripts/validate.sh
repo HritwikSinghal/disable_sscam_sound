@@ -8,7 +8,8 @@ fail=0
 err() { echo "FAIL: $*" >&2; fail=1; }
 
 # Required files for a flashable module.
-for f in module.prop META-INF/com/google/android/update-binary META-INF/com/google/android/updater-script customize.sh post-fs-data.sh sound_paths.sh silent.ogg; do
+OVERLAY_APK="system/product/overlay/NoSafeMediaVolume/NoSafeMediaVolumeOverlay.apk"
+for f in module.prop META-INF/com/google/android/update-binary META-INF/com/google/android/updater-script customize.sh post-fs-data.sh sound_paths.sh silent.ogg "$OVERLAY_APK"; do
   [ -f "$M/$f" ] || err "missing $f"
 done
 
@@ -29,6 +30,15 @@ grep -qE '^updateJson=https://' "$M/module.prop" || err "updateJson must be an h
 [ -s "$M/silent.ogg" ] || err "silent.ogg is empty (0-byte files crash SystemUI on modern Android)"
 if command -v file >/dev/null; then
   file "$M/silent.ogg" | grep -qi 'ogg' || err "silent.ogg is not an Ogg file"
+fi
+
+# The headphone-warning RRO must be a signed APK (scripts/build-overlay.sh);
+# package manager skips an unsigned or truncated one at boot without a trace.
+if [ -f "$M/$OVERLAY_APK" ]; then
+  apk_files="$(unzip -Z1 "$M/$OVERLAY_APK" 2>/dev/null || true)"
+  for e in AndroidManifest.xml resources.arsc META-INF/MANIFEST.MF; do
+    printf '%s\n' "$apk_files" | grep -qx "$e" || err "$OVERLAY_APK lacks $e (rebuild with scripts/build-overlay.sh)"
+  done
 fi
 
 # No CRLF line endings in shell/prop files (breaks the installer).

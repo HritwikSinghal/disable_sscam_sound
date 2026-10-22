@@ -1,7 +1,7 @@
 id=silence-shutter-screenshot
-name=Silence Shutter and Screenshot
-version=2.3
-versionCode=5
+name=Silence Shutter, Screenshot and Headphone Warning
+version=2.4
+versionCode=6
 author=hritwik
-description=Silences the camera shutter and screenshot sound by overlaying a short silent clip over the UI sound files (camera_click.ogg etc.) on every boot, via mount --bind plus a best-effort susfs open_redirect in post-fs-data.sh. Systemless and reversible. NOTE: on KernelSU setups that hide modules from apps (Umount modules / susfs auto_try_umount) the overlay is unmounted from System UI and the sound keeps playing -- disable "Umount modules" for System UI (see README). Third-party camera apps with their own bundled shutter sound are unaffected.
+description=Silences the camera shutter and screenshot sound (bind-mounts a silent clip over camera_click.ogg etc. on every boot) and disables the headphone high-volume warning and its automatic volume lowering (RRO overlay turning off sound dose / safe media volume). Systemless and reversible. KernelSU: the headphone part needs a metamodule such as Hybrid Mount, and with module hiding (Umount modules / susfs) the shutter part needs "Umount modules" off for System UI -- see README.
 updateJson=https://github.com/HritwikSinghal/disable_sscam_sound/releases/latest/download/update.json

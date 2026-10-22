@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.hritwiksinghal.overlay.nosafemediavolume"
+    android:versionCode="1" android:versionName="1.0">
+    <!-- targetSdk < 29: preinstalled overlays below Q skip the overlayable check,
+         which these framework bools are not part of. -->
+    <uses-sdk android:minSdkVersion="28" android:targetSdkVersion="28" />
+    <overlay android:targetPackage="android" android:isStatic="true" android:priority="999" />
+    <application android:hasCode="false" />
+</manifest>

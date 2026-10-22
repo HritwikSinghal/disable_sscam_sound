@@ -8,3 +8,6 @@ result
 *.swp
 *.swo
 .DS_Store
+
+# Overlay signing key (scripts/build-overlay.sh); never commit
+/overlay/keystore.jks

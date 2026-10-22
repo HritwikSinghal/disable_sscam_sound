@@ -3,6 +3,17 @@
 This file is the changelog shown by the root manager's in-app updater (the
 `changelog` URL in update.json points here). Newest first.
 
+## v2.4
+
+- Disable the headphone "high volume" warning and its automatic volume
+  lowering. A new RRO overlay (system/product/overlay/NoSafeMediaVolume/) sets
+  `config_safe_media_volume_enabled` and `config_safe_sound_dosage_enabled` to
+  false, which turns off both sound dose (CSD) and the legacy safe-volume
+  warning. Takes effect after a reboot.
+- KernelSU: the overlay is mounted only through a metamodule (e.g. Hybrid
+  Mount); the installer warns when none is present.
+- No change to the shutter/screenshot silencing.
+
 ## v2.3
 
 - Add in-app auto-update: module.prop now carries `updateJson`, and CI publishes

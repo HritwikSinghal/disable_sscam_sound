@@ -9,6 +9,11 @@ underlying UI sound file (camera_click.ogg). This module overlays a short
 silent clip over the real UI sound files so both go quiet -- without ever
 modifying the read-only system partitions.
 
+Since v2.4 it also disables the headphone "high volume" warning and the
+automatic volume lowering that follows it -- see
+[Headphone volume warning](#headphone-volume-warning-v24). On KernelSU that
+part needs a metamodule such as Hybrid Mount.
+
 ## Legal Note
 
 Disabling the camera shutter sound is ILLEGAL in some countries, notably
@@ -42,6 +47,62 @@ lawful. You are responsible for complying with your local laws.
   (camera_click.ogg, camera_focus.ogg, VideoRecord.ogg, VideoStop.ogg, plus OEM
   variants) and prints exactly which files will be silenced, so you can confirm
   the module matched something on your specific firmware before you reboot.
+
+## Headphone volume warning (v2.4+)
+
+Pixels warn when headphone volume stays high ("High volume for headphones")
+and may lower the volume on their own. On Android 14 QPR1+ this is sound dose
+(CSD, see https://source.android.com/docs/core/audio/sound-dose) in
+`com.android.server.audio.SoundDoseHelper`: it warns at every 100% of the
+weekly dose and at 500% lowers media volume to RS1. The older safe-media-volume
+dialog ("Raise volume above recommended level?") lives in the same class.
+
+Both are gated by two framework bools, which Pixel turns on through its vendor
+overlay:
+
+- CSD runs when `config_safe_media_volume_enabled` AND
+  `config_safe_sound_dosage_enabled` are true.
+- The legacy warning runs when `config_safe_media_volume_enabled` is true and
+  CSD is off.
+
+The module ships an RRO,
+`module/system/product/overlay/NoSafeMediaVolume/NoSafeMediaVolumeOverlay.apk`,
+that sets both to false. system_server reads them once at boot, so a reboot is
+needed after installing or removing the module.
+
+Requirements:
+
+- KernelSU: a metamodule (e.g. Hybrid Mount) must be installed -- KernelSU
+  mounts a module's `system/` tree only through one, and the overlay must be in
+  `/product/overlay` when the package manager scans at boot. The installer
+  warns if `/data/adb/metamodule` is missing.
+- Magisk mounts the overlay natively.
+
+Verified on a Pixel 10a (Android 17, CP3A.261005.005, KernelSU 3.4 + Hybrid
+Mount 6.2.2 + susfs) with:
+
+```
+adb shell cmd overlay list android | grep nosafemediavolume
+# [x] io.github.hritwiksinghal.overlay.nosafemediavolume
+adb shell dumpsys audio | grep -E 'mEnableCsd|mSafeMediaVolumeState'
+#   mEnableCsd=false
+#   mSafeMediaVolumeState=SAFE_MEDIA_VOLUME_DISABLED
+```
+
+If the overlay is listed as `[ ]` or missing, the module's `system/` tree was
+not mounted -- check the metamodule.
+
+These warnings protect your hearing and are required by regulation in some
+regions (EU EN 50332-3). Disabling them is your call on your own device.
+
+The overlay is prebuilt and committed. To rebuild it after editing `overlay/`:
+
+```
+ANDROID_JAR=/path/to/android.jar bash scripts/build-overlay.sh
+```
+
+`ANDROID_JAR` may also be a device's `framework-res.apk`. The script signs
+with `overlay/keystore.jks` (gitignored); keep reusing the same key.
 
 ## Why the sound may still play on KernelSU (module hiding)
 
@@ -130,8 +191,9 @@ see "Why the sound may still play" above.
 ## Compatibility
 
 - Magisk v20.4 or newer
-- KernelSU
-- APatch
+- KernelSU (the headphone-warning overlay additionally needs a metamodule such
+  as Hybrid Mount)
+- APatch (headphone-warning overlay untested)
 - Tested target: Google Pixel on recent Android.
 - Systemless and fully reversible: just remove the module and reboot.
 
@@ -148,7 +210,8 @@ see "Why the sound may still play" above.
 2. Flash it:
    - Magisk app: Modules -> Install from storage -> select the zip.
    - KernelSU / APatch app: Modules -> Install -> select the zip.
-3. Reboot. The shutter and screenshot sounds will be silent.
+3. Reboot. The shutter and screenshot sounds will be silent, and the
+   headphone volume warning is off.
 4. If nothing is silenced, the installer prints a warning. Run the diagnostic
    below and open an issue with the output.
 
@@ -208,7 +271,7 @@ module/sound_paths.sh can be extended.
 ```
 module/                                  -- module source, zipped into the flashable artifact
   module.prop                            -- metadata: id=silence-shutter-screenshot,
-                                            name="Silence Shutter and Screenshot", version v2.3,
+                                            name="Silence Shutter, Screenshot and Headphone Warning", v2.4,
                                             updateJson (in-app auto-update URL)
   customize.sh                           -- install-time validator/preview (scans partitions, lists
                                             matches; warns if KernelSU module-hiding is active)
@@ -216,15 +279,20 @@ module/                                  -- module source, zipped into the flash
                                             files (+ best-effort susfs open_redirect)
   sound_paths.sh                         -- shared SSCAM_SOUNDS / SSCAM_DIRS lists (sourced by both)
   silent.ogg                             -- real ~0.25s silent Ogg/Vorbis clip (NOT a 0-byte file)
+  system/product/overlay/NoSafeMediaVolume/
+    NoSafeMediaVolumeOverlay.apk         -- prebuilt RRO disabling sound dose + safe media volume
   META-INF/com/google/android/
     update-binary                        -- modern installer trampoline (install_module)
     updater-script                       -- modern installer trampoline
+overlay/                                 -- RRO source (AndroidManifest.xml, res/values/bools.xml)
 CHANGELOG.md                             -- changelog shown by the in-app updater (update.json points here)
 scripts/
   build.sh                               -- builds dist/disable_sscam_sound-<version>.zip from module/
                                             (version read from module.prop)
   validate.sh                            -- sanity-checks module source: required files, module.prop
-                                            keys (incl. updateJson), non-empty ogg, LF, update.json JSON
+                                            keys (incl. updateJson), non-empty ogg, signed overlay APK,
+                                            LF, update.json JSON
+  build-overlay.sh                       -- rebuilds the overlay APK from overlay/ (aapt2, apksigner)
   gen-update-json.sh                     -- generates update.json (version, versionCode, zipUrl,
                                             changelog) from module.prop + the release tag
 .github/workflows/

@@ -13,7 +13,9 @@ files -- the read-only partitions are never modified, so it is fully reversible.
   - `post-fs-data.sh` -- boot-time worker: bind-mounts the silent clip over found files
   - `sound_paths.sh` -- shared `SSCAM_SOUNDS` / `SSCAM_DIRS` lists (sourced by both)
   - `silent.ogg` -- a short (~0.25s) silent Ogg/Vorbis clip
+  - `system/product/overlay/NoSafeMediaVolume/NoSafeMediaVolumeOverlay.apk` -- prebuilt RRO that disables the headphone volume warning
   - `META-INF/com/google/android/{update-binary,updater-script}` -- installer trampoline
+- `overlay/` -- RRO source; `scripts/build-overlay.sh` rebuilds the committed APK (needs aapt2/apksigner + `ANDROID_JAR`; key `overlay/keystore.jks` is gitignored)
 - `scripts/build.sh` -- builds `dist/disable_sscam_sound-<version>.zip` (version from module.prop)
 - `scripts/validate.sh` -- sanity-checks the module source
 - `scripts/gen-update-json.sh` -- generates `update.json` (version, versionCode, zipUrl, changelog) for in-app auto-update
@@ -55,6 +57,24 @@ files -- the read-only partitions are never modified, so it is fully reversible.
   tag, so the manager always reads the newest release -- no commit-back to the
   repo. Auto-update only takes effect from a build that ALREADY ships
   `updateJson` (v2.3+); the first such build is installed manually.
+
+- Headphone warning (v2.4+): `SoundDoseHelper` enables CSD when
+  `config_safe_media_volume_enabled && config_safe_sound_dosage_enabled` (or
+  sysprop `audio.safemedia.csd.force`), and the legacy safe-volume warning when
+  `config_safe_media_volume_enabled` is true and CSD is off. Pixel's vendor RRO
+  sets both true; the module's RRO sets both false. Turning off CSD alone would
+  bring back the legacy warning, so `config_safe_media_volume_enabled` is the
+  key bool.
+- The RRO must target SDK < 29 and be preinstalled: these bools are not in
+  framework-res's `<overlayable>`, and Android skips the overlayable check
+  only for pre-Q preinstalled overlays. It must sit on `/product` (or
+  `/system_ext`) to outrank the `/vendor` RRO; `/system/overlay` loses.
+- `cmd overlay fabricate` (FRRO) does NOT work for this: shell-owned fabricated
+  overlays are deleted at boot, and system_server reads the bools only at boot.
+- Unlike the shutter part, the RRO relies on the systemless `system/` tree. On
+  KernelSU that needs a metamodule (`/data/adb/metamodule`, e.g. Hybrid Mount);
+  verified working on Pixel 10a with Hybrid Mount 6.2.2. Verify with
+  `dumpsys audio | grep -E 'mEnableCsd|mSafeMediaVolumeState'`.
 
 ## Conventions
 

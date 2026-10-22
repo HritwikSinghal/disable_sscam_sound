@@ -1,10 +1,15 @@
 # customize.sh - sourced by the Magisk/KernelSU/APatch installer at install time.
 #
-# This module does NOT build a systemless overlay tree. The actual silencing is
-# done by post-fs-data.sh on every boot via mount --bind, because magic-mount
-# does not reliably overlay the separate /product partition on KernelSU (see
-# post-fs-data.sh). Install time only validates the clip and previews which
+# The shutter/screenshot silencing does NOT use the systemless overlay tree: it
+# is done by post-fs-data.sh on every boot via mount --bind, because KernelSU's
+# built-in magic-mount does not reliably overlay the separate /product partition
+# (see post-fs-data.sh). Install time only validates the clip and previews which
 # files will be silenced, so the user gets immediate feedback.
+#
+# The headphone-volume-warning part DOES use the overlay tree:
+# system/product/overlay/NoSafeMediaVolume/ holds an RRO that must be scanned
+# by the package manager at boot, which a later bind cannot provide. On
+# KernelSU this needs a metamodule (e.g. Hybrid Mount) to mount it.
 
 SKIPUNZIP=0
 . "$MODPATH/sound_paths.sh"
@@ -33,6 +38,20 @@ if [ "$found" -eq 0 ]; then
 else
   ui_print "- Found $found sound file(s); post-fs-data.sh will bind a silent"
   ui_print "  clip over them on every boot."
+fi
+
+ui_print "- Headphone volume warning: installing an overlay that turns off"
+ui_print "  sound dose (CSD) and the safe-volume warning, incl. auto-lowering"
+# Recent KernelSU mounts a module's system/ tree only through a metamodule;
+# /data/adb/metamodule points at the active one. Without it the RRO never
+# reaches /product/overlay and the warning stays on.
+if [ "$KSU" = "true" ] && [ ! -e /data/adb/metamodule ]; then
+  ui_print " "
+  ui_print "!! No KernelSU metamodule found (/data/adb/metamodule)."
+  ui_print "!! The headphone-warning overlay will NOT be mounted. Install a"
+  ui_print "!! metamodule such as Hybrid Mount, then reboot. (The shutter /"
+  ui_print "!! screenshot part does not need it.)"
+  ui_print " "
 fi
 
 # The boot script and the clip it binds must be present and readable at boot.

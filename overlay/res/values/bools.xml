@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Gates both CSD (with config_safe_sound_dosage_enabled) and the legacy safe-volume warning. -->
+    <bool name="config_safe_media_volume_enabled">false</bool>
+    <bool name="config_safe_sound_dosage_enabled">false</bool>
+</resources>
