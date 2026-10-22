@@ -2,7 +2,7 @@
 > Last updated: 2026-10-22 | Session: 4
 
 ## Overview
-disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences the camera shutter and screenshot sound on modern Android (especially Pixel) by overlaying a short silent Ogg clip over the system UI sound files. The original 2019 module was rewritten as v2 and is now SHIPPED as v2.2 (published GitHub Release, marked Latest). It is VERIFIED working on a Pixel 10a (Android 17, KernelSU-Next + susfs). Mechanism: post-fs-data.sh does `mount --bind` of silent.ogg over each found UI sound file every boot (plus a best-effort, here-ineffective susfs open_redirect). Core caveat: on KernelSU setups that HIDE modules from apps (Umount modules / susfs auto_try_umount), the overlay is unmounted from System UI and the sound keeps playing until the user disables "Umount modules" for System UI (one-time, persistent); customize.sh prints this at install. The agent CAN drive the device over adb this session (KernelSU root; USB is flaky -- reconnect with `adb wait-for-device`). Phases 1-4 are DONE. Phase 6 (v2.4) adds a prebuilt RRO that disables the headphone volume warning (sound dose / safe media volume); the built v2.4 zip is verified on-device; only commit/push/tag v2.4 remains.
+disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences the camera shutter and screenshot sound on modern Android (especially Pixel) by overlaying a short silent Ogg clip over the system UI sound files. The original 2019 module was rewritten as v2 and is now SHIPPED as v2.2 (published GitHub Release, marked Latest). It is VERIFIED working on a Pixel 10a (Android 17, KernelSU-Next + susfs). Mechanism: post-fs-data.sh does `mount --bind` of silent.ogg over each found UI sound file every boot (plus a best-effort, here-ineffective susfs open_redirect). Core caveat: on KernelSU setups that HIDE modules from apps (Umount modules / susfs auto_try_umount), the overlay is unmounted from System UI and the sound keeps playing until the user disables "Umount modules" for System UI (one-time, persistent); customize.sh prints this at install. The agent CAN drive the device over adb this session (KernelSU root; USB is flaky -- reconnect with `adb wait-for-device`). Phases 1-4 are DONE. Phase 6 (v2.4) adds a prebuilt RRO that disables the headphone volume warning (sound dose / safe media volume); SHIPPED as v2.4 (verified on-device, GitHub Release published).
 
 ## Plan
 
@@ -43,13 +43,13 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 - [x] Add updateJson URL to module.prop for in-app updates (v2.3): updateJson -> releases/latest/download/update.json; release.yml generates+uploads update.json (scripts/gen-update-json.sh) per tag; CHANGELOG.md added; validate.sh requires updateJson + JSON-checks the generator. RELEASED v2.3 (tag pushed, workflow green): release has both the zip and update.json; the latest/download/update.json URL resolves and its zipUrl returns HTTP 200. Auto-update works from v2.3 onward (v2.3 installed manually once, then future releases update in-app).
 - [ ] Consider generating silent.ogg in CI (see tasks.md).
 
-### Phase 6: Headphone volume warning (v2.4) -- IN PROGRESS
+### Phase 6: Headphone volume warning (v2.4) -- DONE
 - [x] Locate the mechanism: SoundDoseHelper (CSD + legacy safe media) gated by config_safe_media_volume_enabled / config_safe_sound_dosage_enabled, set true by Pixel's /vendor RRO
 - [x] Rule out FRRO (`cmd overlay fabricate`): shell-owned FRROs are deleted at boot
 - [x] Prototype RRO (targetSdk 28, static) in /product/overlay via a test module: verified mEnableCsd=false + SAFE_MEDIA_VOLUME_DISABLED after reboot (KernelSU 3.4 + Hybrid Mount 6.2.2)
 - [x] Add overlay/ source, scripts/build-overlay.sh, prebuilt APK, installer metamodule warning, validate.sh APK check, README/CHANGELOG/CLAUDE.md; bump to v2.4 (versionCode 6)
 - [x] Removed test module, flashed built v2.4 zip, rebooted: overlay [x], mEnableCsd=false, SAFE_MEDIA_VOLUME_DISABLED, shutter bind still 3584 bytes
-- [ ] Commit, push, tag v2.4 (release.yml publishes zip + update.json)
+- [x] Committed 346f128, tagged v2.4; release.yml + build.yml green; release has zip + update.json, latest/download/update.json reports versionCode 6, zipUrl returns HTTP 200
 
 ## Status Summary
 | Phase | Status | Progress |
@@ -59,7 +59,7 @@ disable_sscam_sound is a flashable Magisk/KernelSU/APatch module that silences t
 | Phase 3: Docs and repo hygiene | Done | 4/4 |
 | Phase 4: Device verification and release | Done | 9/9 |
 | Phase 5: Optional enhancements | Backlog | 0/4 |
-| Phase 6: Headphone volume warning (v2.4) | In progress | 5/6 |
+| Phase 6: Headphone volume warning (v2.4) | Done | 6/6 |
 
 ## Decisions & Notes
 <!-- Append entries as: YYYY-MM-DD: [decision or important note] -->
