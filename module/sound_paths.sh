@@ -1,3 +1,4 @@
+# shellcheck shell=sh disable=SC2034  # both lists are read by the scripts that source this file
 # sound_paths.sh - shared lists, sourced by customize.sh (install time) and
 # post-fs-data.sh (every boot). Keep these two lists the single source of truth
 # so the install-time preview and the boot-time bind never drift apart.

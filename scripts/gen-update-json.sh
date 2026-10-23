@@ -14,7 +14,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROP="$ROOT/module/module.prop"
-REPO="HritwikSinghal/disable_sscam_sound"
+REPO="HritwikSinghal/pixel-sound-expert"
 BRANCH="master"
 
 VERSION="$(grep -E '^version=' "$PROP" | cut -d= -f2)"
@@ -31,7 +31,7 @@ if [ "$TAG" != "v$VERSION" ]; then
   echo "WARNING: tag '$TAG' != 'v$VERSION' (module.prop version); zipUrl may 404" >&2
 fi
 
-ZIP_URL="https://github.com/$REPO/releases/download/$TAG/disable_sscam_sound-${VERSION}.zip"
+ZIP_URL="https://github.com/$REPO/releases/download/$TAG/pixel-sound-expert-${VERSION}.zip"
 CHANGELOG_URL="https://raw.githubusercontent.com/$REPO/$BRANCH/CHANGELOG.md"
 
 mkdir -p "$(dirname "$OUT")"

@@ -1,40 +1,59 @@
 name: release
 
-# Publish the flashable module zip to a GitHub Release when a v* tag is pushed.
-#   git tag v2.0 && git push origin v2.0
+# Publish a GitHub Release when a v* tag is pushed:
+#   git tag v2.5 && git push origin v2.5
+# The tag must equal v<version> from module/module.prop, and CHANGELOG.md must
+# have a matching "## v<version>" section (used as the release notes).
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write  # required to create the Release and upload assets
+  contents: read
 
 jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: ci
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the Release and upload assets
     steps:
       - uses: actions/checkout@v4
 
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y zip file
+        run: sudo apt-get update && sudo apt-get install -y zip unzip file
 
-      - name: Validate module source
-        run: bash scripts/validate.sh
+      # A mismatched tag would publish an update.json whose zipUrl 404s.
+      - name: Check tag matches module.prop version
+        run: |
+          version="$(grep -E '^version=' module/module.prop | cut -d= -f2)"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME != v$version (module/module.prop)"
+            exit 1
+          fi
 
       - name: Build module zip
         run: bash scripts/build.sh dist
 
-      # Generate the in-app auto-update metadata for this exact tag. module.prop
-      # points updateJson at releases/latest/download/update.json, so uploading
-      # it as a release asset makes the manager always read the newest release.
+      # module.prop points updateJson at releases/latest/download/update.json,
+      # so uploading it here makes the manager always read the newest release.
       - name: Generate update.json
-        run: bash scripts/gen-update-json.sh "${GITHUB_REF_NAME}" dist/update.json
+        run: bash scripts/gen-update-json.sh "$GITHUB_REF_NAME" dist/update.json
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          awk -v h="## $GITHUB_REF_NAME" '$0==h{f=1;next} /^## /{f=0} f' CHANGELOG.md > dist/notes.md
+          [ -s dist/notes.md ] || { echo "::error::no '## $GITHUB_REF_NAME' section in CHANGELOG.md"; exit 1; }
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: dist/notes.md
           files: |
             dist/*.zip
             dist/update.json
-          generate_release_notes: true
           fail_on_unmatched_files: true
+          make_latest: true

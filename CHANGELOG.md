@@ -3,6 +3,14 @@
 This file is the changelog shown by the root manager's in-app updater (the
 `changelog` URL in update.json points here). Newest first.
 
+## v2.5
+
+- Renamed to Pixel Sound Expert (module id `pixel-sound-expert`, repo
+  `HritwikSinghal/pixel-sound-expert`). Installing it flags the old
+  `silence-shutter-screenshot` module for removal on the next reboot.
+- License changed from MIT to GPL-3.0.
+- No behavior change to the silencing or the headphone overlay.
+
 ## v2.4
 
 - Disable the headphone "high volume" warning and its automatic volume

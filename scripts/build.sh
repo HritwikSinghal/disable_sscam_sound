@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the flashable Magisk/KernelSU/APatch module zip from module/.
 # Usage: scripts/build.sh [output-dir]
-# Output: <output-dir>/disable_sscam_sound-<version>.zip  (default output-dir: dist/)
+# Output: <output-dir>/pixel-sound-expert-<version>.zip  (default output-dir: dist/)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,7 +17,7 @@ OUT_DIR="$(cd "$OUT_DIR" && pwd)"
 VERSION="$(grep -E '^version=' "$MODULE_DIR/module.prop" | cut -d= -f2)"
 [ -n "$VERSION" ] || { echo "ERROR: no version= in module.prop" >&2; exit 1; }
 
-ZIP="$OUT_DIR/disable_sscam_sound-${VERSION}.zip"
+ZIP="$OUT_DIR/pixel-sound-expert-${VERSION}.zip"
 rm -f "$ZIP"
 
 # zip from inside module/ so paths are at the archive root (required by installers).

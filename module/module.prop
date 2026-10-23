@@ -1,7 +1,7 @@
-id=silence-shutter-screenshot
-name=Silence Shutter, Screenshot and Headphone Warning
-version=2.4
-versionCode=6
+id=pixel-sound-expert
+name=Pixel Sound Expert
+version=2.5
+versionCode=7
 author=hritwik
 description=Silences the camera shutter and screenshot sound (bind-mounts a silent clip over camera_click.ogg etc. on every boot) and disables the headphone high-volume warning and its automatic volume lowering (RRO overlay turning off sound dose / safe media volume). Systemless and reversible. KernelSU: the headphone part needs a metamodule such as Hybrid Mount, and with module hiding (Umount modules / susfs) the shutter part needs "Umount modules" off for System UI -- see README.
-updateJson=https://github.com/HritwikSinghal/disable_sscam_sound/releases/latest/download/update.json
+updateJson=https://github.com/HritwikSinghal/pixel-sound-expert/releases/latest/download/update.json

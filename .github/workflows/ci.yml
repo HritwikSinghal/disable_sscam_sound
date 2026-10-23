@@ -1,0 +1,46 @@
+name: ci
+
+# Lint, validate and build on every push and PR so a broken module never
+# reaches a release. release.yml reuses this workflow before publishing.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shellcheck
+        run: bash scripts/lint.sh  # shellcheck is preinstalled on ubuntu-latest
+      - name: Actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
+          ./actionlint -color
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y zip unzip file
+
+      - name: Validate module source
+        run: bash scripts/validate.sh
+
+      - name: Build module zip
+        run: bash scripts/build.sh dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pixel-sound-expert-module
+          path: dist/*.zip
+          if-no-files-found: error

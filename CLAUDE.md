@@ -1,4 +1,4 @@
-# disable_sscam_sound
+# Pixel Sound Expert (pixel-sound-expert)
 
 A flashable Magisk / KernelSU / APatch module that silences the camera shutter
 and screenshot sound on modern Android (especially Google Pixel). It works
@@ -16,15 +16,20 @@ files -- the read-only partitions are never modified, so it is fully reversible.
   - `system/product/overlay/NoSafeMediaVolume/NoSafeMediaVolumeOverlay.apk` -- prebuilt RRO that disables the headphone volume warning
   - `META-INF/com/google/android/{update-binary,updater-script}` -- installer trampoline
 - `overlay/` -- RRO source; `scripts/build-overlay.sh` rebuilds the committed APK (needs aapt2/apksigner + `ANDROID_JAR`; key `overlay/keystore.jks` is gitignored)
-- `scripts/build.sh` -- builds `dist/disable_sscam_sound-<version>.zip` (version from module.prop)
-- `scripts/validate.sh` -- sanity-checks the module source
+- `scripts/build.sh` -- builds `dist/pixel-sound-expert-<version>.zip` (version from module.prop)
+- `scripts/validate.sh` -- sanity-checks the module source (incl. a `## v<version>` CHANGELOG entry)
+- `scripts/lint.sh` -- shellcheck (module scripts as POSIX sh; upstream update-binary excluded)
 - `scripts/gen-update-json.sh` -- generates `update.json` (version, versionCode, zipUrl, changelog) for in-app auto-update
 - `CHANGELOG.md` -- changelog shown by the in-app updater (`update.json` `changelog` URL points here)
-- `.github/workflows/build.yml` -- validate + build + upload artifact on push/PR
-- `.github/workflows/release.yml` -- on a `v*` tag: build the zip, generate `update.json`, publish both to a GitHub Release
+- `.github/workflows/ci.yml` -- lint (shellcheck + actionlint) + validate + build + upload artifact on push/PR; reused by release.yml
+- `.github/workflows/release.yml` -- on a `v*` tag: run ci, check tag == `v<version>`, build, generate `update.json`, publish both with the CHANGELOG section as notes
+- `docs/architecture.md` -- mechanism, design decisions, history (README is user-facing and kept short)
 - `reference/original-broken-module.zip` -- the old broken module, kept for reference
 
 ## Key facts
+
+- Module id is `pixel-sound-expert` since v2.5 (was `silence-shutter-screenshot`;
+  `customize.sh` touches the old id's `remove` flag). License is GPL-3.0.
 
 - The camera shutter and the screenshot share the SAME sound file
   (`camera_click.ogg`) on Pixel -- silencing it kills both.
@@ -87,7 +92,7 @@ files -- the read-only partitions are never modified, so it is fully reversible.
 ## Long-Running Project
 
 This project uses session-persistent tracking. At the start of every session:
-1. Read `claude/progress.md` silently for a full catch-up -- do not ask the user to re-explain anything.
+1. Read `claude/progress.md` (where the project stands) and `claude/todo.md` (checklist + notes) silently -- do not ask the user to re-explain anything.
 2. Do NOT automatically continue working -- wait for the user to indicate they want to proceed.
-3. After each completed task, update `claude/progress.md` immediately (mark `[x]`, recount Status Summary, update date).
-4. `claude/progress.md` is the primary task tracker. Use `claude/tasks.md` only for ad-hoc items outside the long-running plan.
+3. Per-topic detail lives in `claude/workstreams/<slug>.md` (shutter-silencing, headphone-warning, release-pipeline); open the one whose description matches the task.
+4. After each completed task, tick it in `claude/todo.md`, rewrite `claude/progress.md` in place, and update the workstream file.

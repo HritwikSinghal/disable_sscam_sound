@@ -21,6 +21,11 @@ done
 # updateJson must be an https URL (the manager fetches it for in-app updates).
 grep -qE '^updateJson=https://' "$M/module.prop" || err "updateJson must be an https:// URL"
 
+# Every version needs a changelog entry: the in-app updater shows CHANGELOG.md
+# and release.yml uses this section as the release notes.
+VERSION="$(grep -E '^version=' "$M/module.prop" | cut -d= -f2)"
+grep -qx "## v$VERSION" "$ROOT/CHANGELOG.md" || err "CHANGELOG.md has no '## v$VERSION' section"
+
 # updater-script must be exactly the Magisk marker.
 [ "$(tr -d '[:space:]' < "$M/META-INF/com/google/android/updater-script")" = "#MAGISK" ] \
   || err "updater-script must contain only '#MAGISK'"

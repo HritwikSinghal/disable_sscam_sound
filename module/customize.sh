@@ -1,3 +1,4 @@
+# shellcheck shell=sh disable=SC2034  # SKIPUNZIP is read by the installer that sources this file
 # customize.sh - sourced by the Magisk/KernelSU/APatch installer at install time.
 #
 # The shutter/screenshot silencing does NOT use the systemless overlay tree: it
@@ -14,6 +15,16 @@
 SKIPUNZIP=0
 . "$MODPATH/sound_paths.sh"
 SILENT="$MODPATH/silent.ogg"
+
+# Up to v2.4 this module had id silence-shutter-screenshot. Managers treat a new
+# id as a separate module, so an update from v2.4 would leave both installed and
+# double-bind every file. Flag the old one for removal; the manager deletes it
+# on the next boot, before any module script runs.
+OLD_ID=silence-shutter-screenshot
+if [ -d "/data/adb/modules/$OLD_ID" ] && [ ! -e "/data/adb/modules/$OLD_ID/remove" ]; then
+  touch "/data/adb/modules/$OLD_ID/remove"
+  ui_print "- Old module '$OLD_ID' (pre-rename) will be removed on reboot"
+fi
 
 # Guard the original 0-byte failure mode: a missing or empty source clip would
 # bind broken audio that crashes SystemUI / breaks screenshots on Android 13+.
@@ -83,7 +94,7 @@ if [ "$KSU" = "true" ]; then
     ui_print "!!   4. Turn OFF 'Umount modules' for it"
     ui_print "!!   5. Reboot"
     ui_print "!! This is persistent and keeps root-hiding for your other apps."
-    ui_print "!! Details: see the README 'Why the sound may still play' section."
+    ui_print "!! Details: README section 'KernelSU with module hiding'."
     ui_print " "
   fi
 fi

@@ -15,7 +15,7 @@
 #      independent of mounts, so it survives the umount. It MUST run before the
 #      sound is first opened/decoded (system_server/SystemUI preload a SoundPool
 #      sample at boot and hold it), which is why this lives in post-fs-data.
-#      See the "Why it may still play" section in the README.
+#      See "Module hiding" in docs/architecture.md.
 #
 # We always do (1) and add (2) when available.
 MODDIR=${0%/*}
